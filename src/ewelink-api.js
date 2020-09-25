@@ -12,23 +12,26 @@ const authSign = data => crypto.createHmac('sha256', APP_SECRET).update(data).di
 module.exports = class EwelinkApi extends RequestApi {
     constructor({...args})
     {
-        super(args);
+        super();
 
-        const {login, password, region} = args;
-
-        assert.ok(login, "Invalid login credentials");
-        assert.ok(password, "Password can't be blank");
-
-        const email = ~login.indexOf('@') ? login : null;
-        const phoneNumber = !email ? login : null;
+        const {login, password, at, region} = args;
 
         this.region = region || 'eu';
 
-        this.oAuth = {
-            email: email,
-            phoneNumber: phoneNumber,
-            password: password
-        };
+        if (at) {
+            this.oAuth = {at};
+        } else {
+            assert.ok(login, "Invalid login credentials");
+            assert.ok(password, "Password can't be blank");
+
+            const email = ~login.indexOf('@') ? login : null;
+
+            this.oAuth = {
+                email: email,
+                phoneNumber: !email ? login : null,
+                password: password
+            };
+        }
     }
 
     async apiRequest(urlPath, options = {}) {
@@ -55,6 +58,7 @@ module.exports = class EwelinkApi extends RequestApi {
             headers: {'Authorization': `Sign ${authSign(body)}`}
         }).then((oAuth) => {
             const {at, region, rt, user} = oAuth;
+
             if (!at) {
                 throw new Error('No AuthToken value');
             }
@@ -128,7 +132,7 @@ module.exports = class EwelinkApi extends RequestApi {
         } else {
             // Single channel device
             stateToSwitch = state == 'toggle' ? (status == 'off' ? 'on' : 'off') : state;
-            params.sswitch = stateToSwitch;
+            params.switch = stateToSwitch;
         }
 
         const body = JSON.stringify({
