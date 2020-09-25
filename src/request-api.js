@@ -44,7 +44,12 @@ module.exports = class ApiRequest {
                 res.on('end', () => {
                     try {
                         let response = JSON.parse(data);
-                        resolve(response);
+
+                        if (response.error) {
+                            return reject(response);
+                        }
+
+                        return resolve(response);
                     } catch(e) {
                         reject(e);
                     }
