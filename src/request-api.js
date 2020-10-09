@@ -1,31 +1,26 @@
 const https = require('https');
 
 module.exports = class ApiRequest {
-    constructor()
+    constructor(options)
     {
-        this.connectionOpts = {
+        this.connOptions = {
             agent: https.globalAgent,
             timeout: 10000,
-            followRedirect: false
+            followRedirect: false,
+            ...options
         };
     }
 
-    setConnection(options = {}) {
-        Object.assign(this.connectionOpts, options);
-
-        return this;
-    }
-
-    getHostname() {
+    getApiUrl() {
         return 'cn-api.coolkit.cc';
     }
 
     async request(path, {method = 'GET', headers = {}, body = ''}) {
-        const {agent, timeout, followRedirect} = this.connectionOpts;
+        const {agent, timeout, followRedirect} = this.connOptions;
 
         return new Promise((resolve, reject) => {
             const req = https.request({
-                hostname: this.getHostname(),
+                hostname: this.getApiUrl(),
                 port: 8080,
                 path: path,
                 method: method,

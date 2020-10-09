@@ -8,5 +8,7 @@
   },
   "author": "Nikolay Belichuk",
   "license": "MIT",
-  "dependencies": {}
+  "dependencies": {
+    "ws": "^7.3.1"
+  }
 }

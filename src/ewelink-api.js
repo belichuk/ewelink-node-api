@@ -1,6 +1,7 @@
 const APP_ID = 'YzfeftUVcZ6twZw1OoVKPRFYTrGEg01Q';
 const APP_SECRET = '4G91qSoboqYO4Y0XJ0LPPKIsq8reHdfa';
 const RequestApi = require('./request-api');
+const WebSocketApi = require('./websocket-api');
 const getDeviceType = require('./helpers/device-type');
 const assert = require('assert').strict;
 const querystring = require('querystring');
@@ -10,16 +11,17 @@ const nonce = n => crypto.randomBytes(n).toString('hex');
 const authSign = data => crypto.createHmac('sha256', APP_SECRET).update(data).digest('base64');
 
 module.exports = class EwelinkApi extends RequestApi {
-    constructor({...args})
+    constructor({...args}, {...options})
     {
-        super();
+        const {agent, httpOptions} = options;
+        super({agent, httpOptions});
 
-        const {login, password, at, region} = args;
+        const {login, password, at, user, region} = args;
 
         this.region = region || 'eu';
 
         if (at) {
-            this.oAuth = {at};
+            this.oAuth = {at, user};
         } else {
             assert.ok(login, "Invalid login credentials");
             assert.ok(password, "Password can't be blank");
@@ -32,6 +34,42 @@ module.exports = class EwelinkApi extends RequestApi {
                 password: password
             };
         }
+    }
+
+    async getCredentials() {
+        const {at, user: {apikey, appId} = {}} = this.oAuth;
+
+        if (at && apikey && appId) {
+            return this.oAuth;
+        }
+
+        const {email, phoneNumber, password} = this.oAuth;
+        const body = JSON.stringify({
+            email,
+            phoneNumber,
+            password,
+            appid: APP_ID,
+            ts: Math.floor(new Date() / 1000),
+            nonce: nonce(4),
+            version: 8
+        });
+
+        return this.request('/api/user/login', {
+            body: body,
+            method: 'POST',
+            headers: {'Authorization': `Sign ${authSign(body)}`}
+        }).then((oAuth) => {
+            const {at, user, region} = oAuth;
+
+            if (!at) {
+                throw new Error('No AuthToken value');
+            }
+
+            this.region = region || this.region;
+            this.oAuth = {at, user};
+
+            return oAuth;
+        });
     }
 
     async apiRequest(urlPath, options = {}) {
@@ -52,26 +90,44 @@ module.exports = class EwelinkApi extends RequestApi {
             version: 8
         });
 
-        return this.request('/api/user/login', {
-            body: body,
-            method: 'POST',
-            headers: {'Authorization': `Sign ${authSign(body)}`}
-        }).then((oAuth) => {
-            const {at, region, rt, user} = oAuth;
-
-            if (!at) {
-                throw new Error('No AuthToken value');
-            }
-
-            this.region = region || this.region;
-            this.oAuth = {at, rt, user};
-
-            return this.apiRequest(urlPath, options);
-        });
+        return this.getCredentials()
+            .then(() => this.apiRequest(urlPath, options));
+        
     }
 
-    getHostname() {
+    async subscribe(callback, options = {}) {
+        const url = this.getWSApiUrl();
+        const {at, user: {apikey, appId} = {}} = await this.getCredentials();
+        const timestamp = Date.now();
+        const {heartbeat = 60000} = options;
+        const {agent} = this.connOptions;
+        const auth = {
+            at,
+            apikey,
+            appId,
+            action: 'userOnline',
+            nonce: nonce(4),
+            ts: Math.floor(timestamp / 1000),
+            userAgent: 'ewelink-node-api',
+            sequence: timestamp,
+            version: 8
+        };
+        const socketOptions = {
+            agent,
+            perMessageDeflate: true,
+            followRedirects: false,
+            maxRedirects: 0
+        };
+
+        return new WebSocketApi(callback, {url, auth, heartbeat, ...socketOptions});
+    }
+
+    getApiUrl() {
         return `${this.region}-api.coolkit.cc`;
+    }
+
+    getWSApiUrl() {
+        return `wss://${this.region}-pconnect3.coolkit.cc:8080/api/ws`;
     }
 
     async getDevices() {
