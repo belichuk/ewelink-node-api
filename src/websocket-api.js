@@ -28,7 +28,8 @@ module.exports = function(callback, {url, auth, heartbeat = 60000, ...options}) 
     });
     
     const getWebSocket = () => ws;
-    const destroy = () => ws.terminate();
+    const dispose = () => ws.terminate();
+    const isDisposed = () => ws.readyState === WebSocket.CLOSED;
 
-    return {on, off, getWebSocket, destroy};
+    return {on, off, getWebSocket, isDisposed, dispose};
 }
