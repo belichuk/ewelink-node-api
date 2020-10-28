@@ -11,7 +11,7 @@ const nonce = n => crypto.randomBytes(n).toString('hex');
 const authSign = data => crypto.createHmac('sha256', APP_SECRET).update(data).digest('base64');
 
 module.exports = class EwelinkApi extends RequestApi {
-    constructor({...args}, {...options})
+    constructor(args = {}, options = {})
     {
         const {agent, httpOptions} = options;
         super({agent, httpOptions});

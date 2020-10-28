@@ -4,11 +4,16 @@
   "description": "",
   "main": "./src/ewelink-api.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "./node_modules/.bin/mocha --color --config .mocharc.js ./spec/*.spec.js",
+    "watch": "./node_modules/.bin/mocha -w --color --config .mocharc.js ./spec/*.spec.js"
   },
   "author": "Nikolay Belichuk",
   "license": "MIT",
   "dependencies": {
     "ws": "^7.3.1"
+  },
+  "devDependencies": {
+    "mocha": "^8.2.0",
+    "sinon": "^9.2.1"
   }
 }
