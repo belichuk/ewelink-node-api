@@ -97,14 +97,14 @@ module.exports = class EwelinkApi extends RequestApi {
 
     async subscribe(callback, options = {}) {
         const url = this.getWSApiUrl();
-        const {at, user: {apikey, appId} = {}} = await this.getCredentials();
+        const {at, user: {apikey} = {}} = await this.getCredentials();
         const timestamp = Date.now();
         const {heartbeat = 60000} = options;
         const {agent} = this.connOptions;
         const auth = {
             at,
             apikey,
-            appId,
+            appid: APP_ID,
             action: 'userOnline',
             nonce: nonce(4),
             ts: Math.floor(timestamp / 1000),
